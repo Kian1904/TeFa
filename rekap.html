@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Absensi TeFa — Rekap</title>
+  <link rel="stylesheet" href="./assets/css/app.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">Absensi TeFa<small>Rekap Data</small></div>
+      <nav class="topnav">
+        <a href="./index.html">Beranda</a>
+        <a href="./guru.html">Guru PJ</a>
+        <a href="./rekap.html" class="active">Rekap</a>
+        <a href="#" id="logout" class="hidden">Keluar</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card white" id="loginCard">
+      <div class="eyebrow">Masuk</div>
+      <h2>Token akses guru PJ</h2>
+      <label for="token">Token</label>
+      <div class="row">
+        <input id="token" type="password" placeholder="Masukkan token" autocomplete="off">
+        <button id="btnLogin" class="btn btn-primary" type="button">Masuk</button>
+      </div>
+      <div id="loginStatus" class="status hidden"></div>
+    </div>
+
+    <div id="dashView" class="hidden">
+      <div class="card white">
+        <div class="eyebrow">Filter</div>
+        <div class="toolbar" style="margin:10px 0;">
+          <button class="chip active" data-range="today" type="button">Hari ini</button>
+          <button class="chip" data-range="week" type="button">Minggu ini</button>
+        </div>
+        <div class="row">
+          <div><label for="fMulai">Dari</label><input type="date" id="fMulai"></div>
+          <div><label for="fSelesai">Sampai</label><input type="date" id="fSelesai"></div>
+          <div>
+            <label for="fKelas">Kelas</label>
+            <select id="fKelas">
+              <option value="">Semua kelas</option>
+              <option>X.A</option><option>X.B</option><option>X.C</option><option>X.D</option><option>X.E</option>
+              <option>XI.A</option><option>XI.B</option><option>XI.C</option><option>XI.D</option><option>XI.E</option>
+              <option>XII.A</option><option>XII.B</option><option>XII.C</option><option>XII.D</option><option>XII.E</option>
+            </select>
+          </div>
+          <div>
+            <label for="fUnit">Unit</label>
+            <select id="fUnit">
+              <option value="">Semua unit</option>
+              <option value="BANKMINI">Bank Mini</option>
+              <option value="SMARTCOPY">Smartcopy</option>
+              <option value="ESTEHSOLO">Es Teh Solo</option>
+            </select>
+          </div>
+          <button id="btnFilter" class="btn btn-primary" type="button">Terapkan</button>
+        </div>
+        <div class="toolbar" style="margin-top:12px;">
+          <button id="btnExport" class="btn btn-sm" type="button">Unduh rekap (CSV)</button>
+          <button id="btnExportSiswa" class="btn btn-sm" type="button">Unduh rekap per siswa (CSV)</button>
+        </div>
+      </div>
+
+      <div class="card white">
+        <div id="summary" class="summary">Memuat...</div>
+        <div class="tablewrap" style="margin-top:10px;">
+          <table class="rekap">
+            <thead>
+              <tr>
+                <th>Tanggal</th><th>Waktu</th><th>Nama</th><th>Kelas</th><th>Unit</th>
+                <th>Sesi</th><th>Jam</th><th class="num">Jarak</th><th>Status</th><th>Roster</th><th>Token</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div id="empty" class="empty hidden">Belum ada check-in pada rentang ini.</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api } from './assets/js/api.js';
+    import { $, getToken, setToken, clearToken, say, el, csv, downloadText } from './assets/js/common.js';
+
+    let token = getToken();
+    let akses = null;
+
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function iso(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+    function opts(){ return { mulai: $('fMulai').value, selesai: $('fSelesai').value, kelas: $('fKelas').value, unit: $('fUnit').value }; }
+    function setChip(range){
+      document.querySelectorAll('.chip').forEach(function(c){ c.classList.toggle('active', c.getAttribute('data-range')===range); });
+    }
+
+    function showLogin(){ $('loginCard').classList.remove('hidden'); $('dashView').classList.add('hidden'); $('logout').classList.add('hidden'); }
+    function showDash(){ $('loginCard').classList.add('hidden'); $('dashView').classList.remove('hidden'); $('logout').classList.remove('hidden'); }
+
+    function login(t){
+      $('btnLogin').disabled = true;
+      api('tefaLogin', t).then(function(res){
+        $('btnLogin').disabled = false;
+        if (!res || res.ok === false || res.message === 'Token tidak valid.') { say($('loginStatus'), (res && res.message) || 'Token tidak valid.', 'err'); return; }
+        token = t; setToken(t); akses = res;
+        showDash();
+        const today = iso(new Date());
+        $('fMulai').value = today; $('fSelesai').value = today; setChip('today');
+        load();
+      }).catch(function(e){ $('btnLogin').disabled = false; say($('loginStatus'), 'Gagal: ' + e.message, 'err'); });
+    }
+
+    $('btnLogin').addEventListener('click', function(){ login($('token').value.trim()); });
+    $('token').addEventListener('keydown', function(e){ if (e.key==='Enter') login($('token').value.trim()); });
+    $('logout').addEventListener('click', function(e){ e.preventDefault(); clearToken(); token=''; akses=null; showLogin(); });
+
+    function load(){
+      $('summary').textContent = 'Memuat...';
+      api('tefaDashboard', token, opts()).then(function(res){
+        const tbody = $('tbody'); tbody.textContent = '';
+        if (!res || !res.ok) { $('summary').textContent = (res && res.message) || 'Gagal memuat.'; return; }
+        const rows = res.rows || [];
+        $('summary').textContent = rows.length + ' check-in \u00b7 ' + $('fMulai').value + ' s/d ' + $('fSelesai').value + (res.role === 'ADMIN' ? '' : ' \u00b7 unit ' + res.unit);
+        $('empty').classList.toggle('hidden', rows.length > 0);
+        rows.forEach(function(r){
+          const tr = document.createElement('tr');
+          const cells = [r.tanggal, r.waktu, r.nama, r.kelas, r.unit, 'Sesi ' + r.sesi, r.jamKe,
+                         (r.jarak != null ? r.jarak + 'm' : '-'), r.status,
+                         (r.sesuaiRoster === 'Y' ? 'Ya' : (r.sesuaiRoster === 'N' ? 'Tidak' : '-')), r.token || '-'];
+          cells.forEach(function(v, i){ const td = document.createElement('td'); if (i===7) td.className='num'; td.textContent = v==null?'':String(v); tr.appendChild(td); });
+          tbody.appendChild(tr);
+        });
+      }).catch(function(e){ $('summary').textContent = 'Gagal: ' + e.message; });
+    }
+
+    document.querySelectorAll('.chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        const range = chip.getAttribute('data-range'); setChip(range);
+        if (range === 'today') { const t = iso(new Date()); $('fMulai').value = t; $('fSelesai').value = t; load(); }
+        else { api('tefaRentangMingguIni').then(function(r){ $('fMulai').value = r.mulai; $('fSelesai').value = r.selesai; load(); }); }
+      });
+    });
+    $('btnFilter').addEventListener('click', function(){ setChip(''); load(); });
+
+    $('btnExport').addEventListener('click', function(){
+      $('summary').textContent = 'Menyiapkan rekap...';
+      api('tefaExportRekap', token, opts()).then(function(res){
+        if (!res || !res.ok) { $('summary').textContent = (res && res.message) || 'Gagal.'; return; }
+        downloadText(res.filename || 'rekap-tefa.csv', res.csv);
+        $('summary').textContent = res.count + ' baris rekap diunduh.';
+      }).catch(function(e){ $('summary').textContent = 'Gagal: ' + e.message; });
+    });
+    $('btnExportSiswa').addEventListener('click', function(){
+      $('summary').textContent = 'Menyiapkan rekap per siswa...';
+      api('tefaExportRekapSiswa', token, opts()).then(function(res){
+        if (!res || !res.ok) { $('summary').textContent = (res && res.message) || 'Gagal.'; return; }
+        downloadText(res.filename || 'rekap-tefa-per-siswa.csv', res.csv);
+        $('summary').textContent = res.count + ' siswa diunduh.';
+      }).catch(function(e){ $('summary').textContent = 'Gagal: ' + e.message; });
+    });
+
+    if (token) login(token); else showLogin();
+  </script>
+</body>
+</html>

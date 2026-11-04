@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Absensi TeFa — Guru PJ</title>
+  <link rel="stylesheet" href="./assets/css/app.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">Absensi TeFa<small>Dashboard Guru PJ</small></div>
+      <nav class="topnav">
+        <a href="./index.html">Beranda</a>
+        <a href="./guru.html" class="active">Guru PJ</a>
+        <a href="./rekap.html">Rekap</a>
+        <a href="#" id="logout" class="hidden">Keluar</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card white" id="loginCard">
+      <div class="eyebrow">Masuk</div>
+      <h2>Token akses guru PJ</h2>
+      <label for="token">Token</label>
+      <div class="row">
+        <input id="token" type="password" placeholder="Masukkan token dari admin" autocomplete="off">
+        <button id="btnLogin" class="btn btn-primary" type="button">Masuk</button>
+      </div>
+      <div id="loginStatus" class="status hidden"></div>
+    </div>
+
+    <div id="dashView" class="hidden">
+      <div class="card white">
+        <div class="eyebrow">Barcode absen</div>
+        <h2 id="whoNama">-</h2>
+        <p class="hint" id="whoUnit"></p>
+        <div class="row hidden" id="qrUnitRow" style="margin-bottom:10px;">
+          <div>
+            <label for="qrUnit">Unit</label>
+            <select id="qrUnit">
+              <option value="BANKMINI">Bank Mini</option>
+              <option value="SMARTCOPY">Smartcopy</option>
+              <option value="ESTEHSOLO">Es Teh Solo</option>
+            </select>
+          </div>
+        </div>
+        <div class="qrbox">
+          <img id="qrImg" alt="Barcode absen">
+          <div id="qrInfo" class="summary" style="margin-top:8px;">Memuat barcode...</div>
+          <div id="qrCount" class="summary"></div>
+          <div id="qrUrl" class="qr-url"></div>
+        </div>
+      </div>
+
+      <div class="card hidden" id="adminCard">
+        <div class="eyebrow">Admin</div>
+        <h2>Kelola data</h2>
+
+        <label for="fileJadwal">Muat jadwal piket TeFa (.xlsx)</label>
+        <input type="file" id="fileJadwal" accept=".xlsx">
+
+        <label for="fileSiswa">Muat data siswa (.xlsx)</label>
+        <input type="file" id="fileSiswa" accept=".xlsx">
+
+        <label for="filePembimbing">Muat jadwal pembimbing/guru PJ (.xlsx/.xlsm)</label>
+        <input type="file" id="filePembimbing" accept=".xlsx,.xlsm">
+
+        <div class="toolbar" style="margin-top:14px;">
+          <button id="btnApplyUnit" class="btn btn-sm" type="button">Terapkan koordinat unit</button>
+          <button id="btnRotate" class="btn btn-sm" type="button">Ganti token admin saya</button>
+          <button id="btnCleanup" class="btn btn-sm" type="button">Bersihkan data uji</button>
+        </div>
+        <div id="adminStatus" class="status hidden"></div>
+      </div>
+
+      <p class="summary">Lihat &amp; unduh data check-in di halaman <a href="./rekap.html">Rekap</a>.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { api } from './assets/js/api.js';
+    import { $, getToken, setToken, clearToken, say } from './assets/js/common.js';
+
+    let token = getToken();
+    let akses = null;
+    let qrTimer = null;
+
+    function showLogin() {
+      $('loginCard').classList.remove('hidden');
+      $('dashView').classList.add('hidden');
+      $('logout').classList.add('hidden');
+    }
+    function showDash() {
+      $('loginCard').classList.add('hidden');
+      $('dashView').classList.remove('hidden');
+      $('logout').classList.remove('hidden');
+    }
+
+    function login(t) {
+      $('btnLogin').disabled = true;
+      api('tefaLogin', t).then(function (res) {
+        $('btnLogin').disabled = false;
+        if (!res || res.ok === false || res.message === 'Token tidak valid.') {
+          say($('loginStatus'), (res && res.message) || 'Token tidak valid.', 'err');
+          return;
+        }
+        token = t; setToken(t); akses = res;
+        $('whoNama').textContent = res.nama || '-';
+        $('whoUnit').textContent = (res.role === 'ADMIN') ? 'Admin (semua unit)' : ('Unit: ' + (res.unit || '-'));
+        if (res.role === 'ADMIN') $('adminCard').classList.remove('hidden');
+        if (res.role === 'ADMIN' || !res.unit) $('qrUnitRow').classList.remove('hidden');
+        showDash();
+        startQr();
+      }).catch(function (e) {
+        $('btnLogin').disabled = false;
+        say($('loginStatus'), 'Gagal: ' + e.message, 'err');
+      });
+    }
+
+    $('btnLogin').addEventListener('click', function () { login($('token').value.trim()); });
+    $('token').addEventListener('keydown', function (e) { if (e.key === 'Enter') login($('token').value.trim()); });
+    $('logout').addEventListener('click', function (e) {
+      e.preventDefault(); clearToken(); token = ''; akses = null;
+      if (qrTimer) clearInterval(qrTimer);
+      showLogin();
+    });
+
+    function startQr() {
+      if (qrTimer) clearInterval(qrTimer);
+      refreshQr();
+      qrTimer = setInterval(refreshQr, 15000);
+    }
+    function refreshQr() {
+      const unit = (akses && akses.role === 'ADMIN') ? $('qrUnit').value : '';
+      api('tefaBuatQr', token, unit).then(function (res) {
+        if (!res || !res.ok) {
+          $('qrInfo').textContent = (res && res.message) || 'Barcode tidak tersedia.';
+          $('qrImg').removeAttribute('src'); $('qrCount').textContent = ''; $('qrUrl').textContent = '';
+          return;
+        }
+        $('qrImg').src = res.img;
+        $('qrInfo').textContent = res.unitNama + ' \u00b7 Sesi ' + res.sesi + ' (jam ' + res.jamKe + ')';
+        $('qrCount').textContent = 'Diperbarui otomatis tiap 15 dtk (token aktif ~' + res.ttl + ' dtk).';
+        $('qrUrl').textContent = res.url;
+      }).catch(function (e) { $('qrInfo').textContent = 'Gagal: ' + e.message; });
+    }
+    $('qrUnit').addEventListener('change', startQr);
+
+    function readFile(file, fn) {
+      const reader = new FileReader();
+      reader.onload = function () {
+        const b64 = String(reader.result).split(',')[1] || '';
+        api(fn, token, b64).then(function (res) {
+          say($('adminStatus'), (res && res.message) || 'Selesai.', (res && res.ok) ? 'ok' : 'err');
+        }).catch(function (e) { say($('adminStatus'), 'Gagal: ' + e.message, 'err'); });
+      };
+      reader.onerror = function () { say($('adminStatus'), 'Gagal membaca file.', 'err'); };
+      reader.readAsDataURL(file);
+    }
+    $('fileJadwal').addEventListener('change', function (e) { if (e.target.files[0]) { say($('adminStatus'), 'Membaca ' + e.target.files[0].name + '...', 'info'); readFile(e.target.files[0], 'tefaLoadJadwal'); } });
+    $('fileSiswa').addEventListener('change', function (e) { if (e.target.files[0]) { say($('adminStatus'), 'Membaca ' + e.target.files[0].name + '...', 'info'); readFile(e.target.files[0], 'tefaLoadSiswa'); } });
+    $('filePembimbing').addEventListener('change', function (e) { if (e.target.files[0]) { say($('adminStatus'), 'Membaca ' + e.target.files[0].name + '...', 'info'); readFile(e.target.files[0], 'tefaLoadPembimbing'); } });
+
+    function adminCall(fn) {
+      api(fn, token).then(function (res) { say($('adminStatus'), (res && res.message) || 'Selesai.', (res && res.ok) ? 'ok' : 'err'); })
+        .catch(function (e) { say($('adminStatus'), 'Gagal: ' + e.message, 'err'); });
+    }
+    $('btnApplyUnit').addEventListener('click', function () { adminCall('tefaApplyUnitSeed'); });
+    $('btnRotate').addEventListener('click', function () { adminCall('tefaRotateToken'); });
+    $('btnCleanup').addEventListener('click', function () { adminCall('tefaCleanupTest'); });
+
+    if (token) login(token); else showLogin();
+  </script>
+</body>
+</html>

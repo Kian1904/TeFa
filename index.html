@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Absensi TeFa — SMK Yappa Depok</title>
+  <link rel="stylesheet" href="./assets/css/app.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">Absensi TeFa<small>SMK Yappa Depok &middot; Teaching Factory</small></div>
+      <nav class="topnav">
+        <a href="./index.html" class="active">Beranda</a>
+        <a href="./guru.html">Guru PJ</a>
+        <a href="./rekap.html">Rekap</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="hero">
+      <div class="eyebrow">Teaching Factory</div>
+      <h1>Absensi piket TeFa</h1>
+      <p class="summary" style="max-width:60ch;">Absensi berbasis barcode guru yang berputar tiap 15 detik, terikat lokasi (GPS) dan jadwal rotasi. Pilih halaman:</p>
+    </div>
+
+    <div class="cards3">
+      <a class="card cardlink" href="./siswa.html">
+        <h3>Siswa</h3>
+        <p>Scan barcode dari guru PJ, isi nama &amp; kelas, ambil lokasi, lalu check-in.</p>
+      </a>
+      <a class="card cardlink" href="./guru.html">
+        <h3>Guru PJ</h3>
+        <p>Tampilkan barcode absen unit, tersedia hanya saat jam piket berlangsung.</p>
+      </a>
+      <a class="card cardlink" href="./rekap.html">
+        <h3>Rekap</h3>
+        <p>Lihat &amp; unduh data check-in per unit/kelas/rentang tanggal (CSV).</p>
+      </a>
+    </div>
+
+    <p class="summary" style="margin-top:24px;">Halaman siswa biasanya dibuka dengan memindai barcode (link menyertakan token). Kalau dibuka langsung, akan muncul petunjuk untuk memindai.</p>
+  </div>
+</body>
+</html>
