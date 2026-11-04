@@ -134,7 +134,7 @@
     }
     function refreshQr() {
       const unit = (akses && akses.role === 'ADMIN') ? $('qrUnit').value : '';
-      api('tefaBuatQr', token, unit).then(function (res) {
+      api('tefaBuatQr', token, unit, location.origin + '/siswa.html').then(function (res) {
         if (!res || !res.ok) {
           $('qrInfo').textContent = (res && res.message) || 'Barcode tidak tersedia.';
           $('qrImg').removeAttribute('src'); $('qrCount').textContent = ''; $('qrUrl').textContent = '';
