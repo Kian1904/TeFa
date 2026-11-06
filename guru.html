@@ -57,17 +57,10 @@
       <div class="card hidden" id="adminCard">
         <div class="eyebrow">Admin</div>
         <h2>Kelola data</h2>
+        <p class="hint">Pilih file, lalu tekan <b>Proses</b>. Salah pilih? Tekan <b>Batal</b>.</p>
+        <div id="uploads"></div>
 
-        <label for="fileJadwal">Muat jadwal piket TeFa (.xlsx)</label>
-        <input type="file" id="fileJadwal" accept=".xlsx">
-
-        <label for="fileSiswa">Muat data siswa (.xlsx)</label>
-        <input type="file" id="fileSiswa" accept=".xlsx">
-
-        <label for="filePembimbing">Muat jadwal pembimbing/guru PJ (.xlsx/.xlsm)</label>
-        <input type="file" id="filePembimbing" accept=".xlsx,.xlsm">
-
-        <div class="toolbar" style="margin-top:14px;">
+        <div class="toolbar" style="margin-top:16px;">
           <button id="btnApplyUnit" class="btn btn-sm" type="button">Terapkan koordinat unit</button>
           <button id="btnRotate" class="btn btn-sm" type="button">Ganti token admin saya</button>
           <button id="btnCleanup" class="btn btn-sm" type="button">Bersihkan data uji</button>
@@ -81,51 +74,33 @@
 
   <script type="module">
     import { api } from './assets/js/api.js';
-    import { $, getToken, setToken, clearToken, say } from './assets/js/common.js';
+    import { $, getToken, setToken, clearToken, say, el } from './assets/js/common.js';
 
     let token = getToken();
     let akses = null;
     let qrTimer = null;
 
-    function showLogin() {
-      $('loginCard').classList.remove('hidden');
-      $('dashView').classList.add('hidden');
-      $('logout').classList.add('hidden');
-    }
-    function showDash() {
-      $('loginCard').classList.add('hidden');
-      $('dashView').classList.remove('hidden');
-      $('logout').classList.remove('hidden');
-    }
+    function showLogin() { $('loginCard').classList.remove('hidden'); $('dashView').classList.add('hidden'); $('logout').classList.add('hidden'); }
+    function showDash() { $('loginCard').classList.add('hidden'); $('dashView').classList.remove('hidden'); $('logout').classList.remove('hidden'); }
 
     function login(t) {
       $('btnLogin').disabled = true;
       api('tefaLogin', t).then(function (res) {
         $('btnLogin').disabled = false;
-        if (!res || res.ok === false || res.message === 'Token tidak valid.') {
-          say($('loginStatus'), (res && res.message) || 'Token tidak valid.', 'err');
-          return;
-        }
+        if (!res || res.ok === false || res.message === 'Token tidak valid.') { say($('loginStatus'), (res && res.message) || 'Token tidak valid.', 'err'); return; }
         token = t; setToken(t); akses = res;
         $('whoNama').textContent = res.nama || '-';
-        $('whoUnit').textContent = (res.role === 'ADMIN') ? 'Admin (semua unit)' : ('Unit: ' + (res.unit || '-'));
+        $('whoUnit').textContent = (res.role === 'ADMIN') ? 'Admin (semua unit)' : (res.unit ? 'Unit: ' + res.unit : 'Pembimbing TEFA (semua unit)');
         if (res.role === 'ADMIN') $('adminCard').classList.remove('hidden');
         if (res.role === 'ADMIN' || !res.unit) $('qrUnitRow').classList.remove('hidden');
         showDash();
         startQr();
-      }).catch(function (e) {
-        $('btnLogin').disabled = false;
-        say($('loginStatus'), 'Gagal: ' + e.message, 'err');
-      });
+      }).catch(function (e) { $('btnLogin').disabled = false; say($('loginStatus'), 'Gagal: ' + e.message, 'err'); });
     }
 
     $('btnLogin').addEventListener('click', function () { login($('token').value.trim()); });
     $('token').addEventListener('keydown', function (e) { if (e.key === 'Enter') login($('token').value.trim()); });
-    $('logout').addEventListener('click', function (e) {
-      e.preventDefault(); clearToken(); token = ''; akses = null;
-      if (qrTimer) clearInterval(qrTimer);
-      showLogin();
-    });
+    $('logout').addEventListener('click', function (e) { e.preventDefault(); clearToken(); token = ''; akses = null; if (qrTimer) clearInterval(qrTimer); showLogin(); });
 
     function startQr() {
       if (qrTimer) clearInterval(qrTimer);
@@ -133,7 +108,7 @@
       qrTimer = setInterval(refreshQr, 15000);
     }
     function refreshQr() {
-      const unit = (akses && akses.role === 'ADMIN') ? $('qrUnit').value : '';
+      const unit = (akses && akses.role === 'ADMIN') ? $('qrUnit').value : ($('qrUnitRow').classList.contains('hidden') ? '' : $('qrUnit').value);
       api('tefaBuatQr', token, unit, location.origin + '/siswa.html').then(function (res) {
         if (!res || !res.ok) {
           $('qrInfo').textContent = (res && res.message) || 'Barcode tidak tersedia.';
@@ -148,22 +123,60 @@
     }
     $('qrUnit').addEventListener('change', startQr);
 
-    function readFile(file, fn) {
-      const reader = new FileReader();
-      reader.onload = function () {
-        const b64 = String(reader.result).split(',')[1] || '';
-        api(fn, token, b64).then(function (res) {
-          say($('adminStatus'), (res && res.message) || 'Selesai.', (res && res.ok) ? 'ok' : 'err');
-        }).catch(function (e) { say($('adminStatus'), 'Gagal: ' + e.message, 'err'); });
-      };
-      reader.onerror = function () { say($('adminStatus'), 'Gagal membaca file.', 'err'); };
-      reader.readAsDataURL(file);
+    // Builder baris upload: pilih file -> Proses / Batal.
+    function uploadRow(label, accept, fnName) {
+      const wrap = el('div', { style: 'margin-top:12px' });
+      wrap.appendChild(el('label', { text: label, for: 'f-' + fnName }));
+      const inp = el('input', { type: 'file', accept: accept, id: 'f-' + fnName });
+      wrap.appendChild(inp);
+
+      const actions = el('div', { class: 'row', style: 'display:none;margin-top:6px;align-items:center;' });
+      const nm = el('span', { class: 'summary', style: 'flex:1;word-break:break-all;' });
+      const go = el('button', { class: 'btn btn-sm btn-primary', type: 'button', text: 'Proses' });
+      const cancel = el('button', { class: 'btn btn-sm', type: 'button', text: 'Batal' });
+      actions.appendChild(nm); actions.appendChild(go); actions.appendChild(cancel);
+      wrap.appendChild(actions);
+
+      function reset() { inp.value = ''; actions.style.display = 'none'; nm.textContent = ''; }
+      inp.addEventListener('change', function () {
+        const f = inp.files && inp.files[0];
+        if (!f) { reset(); return; }
+        nm.textContent = f.name;
+        actions.style.display = 'flex';
+        say($('adminStatus'), 'File dipilih: ' + f.name + '. Tekan Proses untuk memuat.', 'info');
+      });
+      cancel.addEventListener('click', function () { reset(); say($('adminStatus'), 'Dibatalkan.', 'info'); });
+      go.addEventListener('click', function () {
+        const f = inp.files && inp.files[0];
+        if (!f) { say($('adminStatus'), 'Belum ada file.', 'err'); return; }
+        go.disabled = true; cancel.disabled = true;
+        say($('adminStatus'), 'Membaca ' + f.name + '...', 'info');
+        const reader = new FileReader();
+        reader.onload = function () {
+          const b64 = String(reader.result).split(',')[1] || '';
+          say($('adminStatus'), 'Memproses di server...', 'info');
+          api(fnName, token, b64).then(function (res) {
+            go.disabled = false; cancel.disabled = false;
+            say($('adminStatus'), (res && res.message) || 'Selesai.', (res && res.ok) ? 'ok' : 'err');
+            if (res && res.ok) reset();
+          }).catch(function (e) {
+            go.disabled = false; cancel.disabled = false;
+            say($('adminStatus'), 'Gagal: ' + e.message, 'err');
+          });
+        };
+        reader.onerror = function () { go.disabled = false; cancel.disabled = false; say($('adminStatus'), 'Gagal membaca file.', 'err'); };
+        reader.readAsDataURL(f);
+      });
+      return wrap;
     }
-    $('fileJadwal').addEventListener('change', function (e) { if (e.target.files[0]) { say($('adminStatus'), 'Membaca ' + e.target.files[0].name + '...', 'info'); readFile(e.target.files[0], 'tefaLoadJadwal'); } });
-    $('fileSiswa').addEventListener('change', function (e) { if (e.target.files[0]) { say($('adminStatus'), 'Membaca ' + e.target.files[0].name + '...', 'info'); readFile(e.target.files[0], 'tefaLoadSiswa'); } });
-    $('filePembimbing').addEventListener('change', function (e) { if (e.target.files[0]) { say($('adminStatus'), 'Membaca ' + e.target.files[0].name + '...', 'info'); readFile(e.target.files[0], 'tefaLoadPembimbing'); } });
+
+    const uploads = $('uploads');
+    uploads.appendChild(uploadRow('Muat jadwal piket TeFa (.xlsx)', '.xlsx', 'tefaLoadJadwal'));
+    uploads.appendChild(uploadRow('Muat data siswa (.xlsx)', '.xlsx', 'tefaLoadSiswa'));
+    uploads.appendChild(uploadRow('Muat jadwal pembimbing/guru PJ (.xlsx/.xlsm)', '.xlsx,.xlsm', 'tefaLoadPembimbing'));
 
     function adminCall(fn) {
+      say($('adminStatus'), 'Memproses...', 'info');
       api(fn, token).then(function (res) { say($('adminStatus'), (res && res.message) || 'Selesai.', (res && res.ok) ? 'ok' : 'err'); })
         .catch(function (e) { say($('adminStatus'), 'Gagal: ' + e.message, 'err'); });
     }
