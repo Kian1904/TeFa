@@ -57,6 +57,16 @@
         </div>
       </div>
 
+      <div class="card white" id="statusCard">
+        <div class="eyebrow">Status data</div>
+        <h2>Data tersimpan di server</h2>
+        <p class="hint">Datanya nempel di server — nggak perlu upload ulang tiap buka dashboard. Upload lagi cuma kalau filenya berubah.</p>
+        <div class="kv"><span class="k">Data siswa</span><span class="v" id="stSiswa">memuat...</span></div>
+        <div class="kv"><span class="k">Guru PJ</span><span class="v" id="stGuru">memuat...</span></div>
+        <div class="kv"><span class="k">Jadwal piket</span><span class="v" id="stJadwal">memuat...</span></div>
+        <div class="kv"><span class="k">Unit TeFa</span><span class="v" id="stUnit">-</span></div>
+      </div>
+
       <div class="card hidden" id="adminCard">
         <div class="eyebrow">Admin</div>
         <h2>Kelola data</h2>
@@ -98,6 +108,7 @@
         if (res.role === 'ADMIN' || !res.unit) $('qrUnitRow').classList.remove('hidden');
         showDash();
         startQr();
+        loadStatus();
       }).catch(function (e) { $('btnLogin').disabled = false; say($('loginStatus'), 'Gagal: ' + e.message, 'err'); });
     }
 
@@ -125,6 +136,29 @@
       }).catch(function (e) { $('qrInfo').textContent = 'Gagal: ' + e.message; });
     }
     $('qrUnit').addEventListener('change', startQr);
+
+    function fmtAt(s) {
+      if (!s) return '';
+      try {
+        const d = new Date(s);
+        return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+      } catch (e) { return ''; }
+    }
+    function setStat(id, obj, satuan) {
+      const n = obj ? obj.n : 0;
+      const t = (obj && obj.at) ? ' \u00b7 ' + fmtAt(obj.at) : '';
+      $(id).textContent = n + ' ' + satuan + t;
+    }
+    function loadStatus() {
+      $('stSiswa').textContent = 'memuat...';
+      api('tefaStatusData', token).then(function (res) {
+        if (!res || !res.ok) { $('stSiswa').textContent = (res && res.message) || 'gagal memuat'; return; }
+        setStat('stSiswa', res.siswa, 'siswa');
+        setStat('stGuru', res.guru, 'guru PJ');
+        setStat('stJadwal', res.jadwal, 'penugasan');
+        $('stUnit').textContent = (res.units || 0) + ' unit';
+      }).catch(function (e) { $('stSiswa').textContent = 'gagal: ' + e.message; });
+    }
 
     // Builder baris upload: pilih file -> Proses / Batal.
     function uploadRow(label, accept, fnName) {
@@ -161,7 +195,7 @@
           api(fnName, token, b64).then(function (res) {
             go.disabled = false; cancel.disabled = false;
             say($('adminStatus'), (res && res.message) || 'Selesai.', (res && res.ok) ? 'ok' : 'err');
-            if (res && res.ok) reset();
+            if (res && res.ok) { reset(); loadStatus(); }
           }).catch(function (e) {
             go.disabled = false; cancel.disabled = false;
             say($('adminStatus'), 'Gagal: ' + e.message, 'err');
