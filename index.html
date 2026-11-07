@@ -4,12 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Absensi TeFa — SMK Yappa Depok</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/css/app.css">
 </head>
 <body>
   <div class="topbar">
     <div class="topbar-inner">
-      <div class="brand">Absensi TeFa<small>SMK Yappa Depok &middot; Teaching Factory</small></div>
+      <div class="brand"><span class="logo">T</span><span class="brandtxt">Absensi TeFa<small>SMK Yappa Depok &middot; Teaching Factory</small></span></div>
       <nav class="topnav">
         <a href="./index.html" class="active">Beranda</a>
         <a href="./guru.html">Guru PJ</a>
@@ -19,22 +22,39 @@
   </div>
 
   <div class="container">
-    <div class="hero">
-      <div class="eyebrow">Teaching Factory</div>
-      <h1>Absensi piket TeFa</h1>
-      <p class="summary" style="max-width:60ch;">Absensi berbasis barcode guru yang berputar tiap 15 detik, terikat lokasi (GPS) dan jadwal rotasi. Pilih halaman:</p>
+    <div class="hero-grid">
+      <div class="hero-main">
+        <div class="badges">
+          <span class="badge acc">Absensi GPS</span>
+          <span class="badge">Teaching Factory</span>
+        </div>
+        <h1>Absensi piket <span class="underline">TeFa</span></h1>
+        <p class="summary">Barcode guru yang berputar tiap 15 detik, terikat lokasi (GPS) dan jadwal rotasi piket. Pilih halaman:</p>
+        <div class="statgrid">
+          <div class="stat"><div class="k">Unit</div><div class="v">3 TeFa</div></div>
+          <div class="stat"><div class="k">Rotasi QR</div><div class="v">15 detik</div></div>
+          <div class="stat"><div class="k">Radius GPS</div><div class="v">30 m</div></div>
+          <div class="stat"><div class="k">Rekap</div><div class="v">CSV</div></div>
+        </div>
+      </div>
+      <div class="hero-side">
+        <div class="eyebrow">Pilih halaman</div>
+        <h2>Mulai dari sini</h2>
+        <p style="font-size:13px;margin:0 0 16px;">Siswa scan barcode, guru PJ tampilkan barcode, rekap diunduh dari sini.</p>
+        <a class="btn btn-dark btn-block" href="./guru.html" style="margin-top:auto;">Masuk dashboard guru</a>
+      </div>
     </div>
 
     <div class="cards3">
-      <a class="card cardlink" href="./siswa.html">
+      <a class="card cardlink outline" href="./siswa.html">
         <h3>Siswa</h3>
         <p>Scan barcode dari guru PJ, isi nama &amp; kelas, ambil lokasi, lalu check-in.</p>
       </a>
-      <a class="card cardlink" href="./guru.html">
+      <a class="card cardlink outline" href="./guru.html">
         <h3>Guru PJ</h3>
         <p>Tampilkan barcode absen unit, tersedia hanya saat jam piket berlangsung.</p>
       </a>
-      <a class="card cardlink" href="./rekap.html">
+      <a class="card cardlink outline" href="./rekap.html">
         <h3>Rekap</h3>
         <p>Lihat &amp; unduh data check-in per unit/kelas/rentang tanggal (CSV).</p>
       </a>
