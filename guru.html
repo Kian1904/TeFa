@@ -77,6 +77,7 @@
           <button id="btnApplyUnit" class="btn btn-sm" type="button">Terapkan koordinat unit</button>
           <button id="btnRotate" class="btn btn-sm" type="button">Ganti token admin saya</button>
           <button id="btnCleanup" class="btn btn-sm" type="button">Bersihkan data uji</button>
+          <button id="btnLockSheet" class="btn btn-sm" type="button">Tutup akses sheet (private)</button>
         </div>
         <div id="adminStatus" class="status hidden"></div>
       </div>
@@ -220,6 +221,10 @@
     $('btnApplyUnit').addEventListener('click', function () { adminCall('tefaApplyUnitSeed'); });
     $('btnRotate').addEventListener('click', function () { adminCall('tefaRotateToken'); });
     $('btnCleanup').addEventListener('click', function () { adminCall('tefaCleanupTest'); });
+    $('btnLockSheet').addEventListener('click', function () {
+      if (!window.confirm('Tutup akses sheet jadi private? Link "siapa saja" akan dimatikan dan cuma lo yang bisa buka.')) return;
+      adminCall('tefaLockSheet');
+    });
 
     if (token) login(token); else showLogin();
   </script>
