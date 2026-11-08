@@ -95,7 +95,7 @@
 
   <script type="module">
     import { api } from './assets/js/api.js';
-    import { $, getToken, setToken, clearToken, say, el } from './assets/js/common.js';
+    import { $, getToken, setToken, clearToken, say, el, busy } from './assets/js/common.js';
 
     let token = getToken();
     let akses = null;
@@ -105,9 +105,9 @@
     function showDash() { $('loginCard').classList.add('hidden'); $('dashView').classList.remove('hidden'); $('logout').classList.remove('hidden'); }
 
     function login(t) {
-      $('btnLogin').disabled = true;
+      busy($('btnLogin'), true);
       api('tefaLogin', t).then(function (res) {
-        $('btnLogin').disabled = false;
+        busy($('btnLogin'), false);
         if (!res || res.ok === false || res.message === 'Token tidak valid.') { say($('loginStatus'), (res && res.message) || 'Token tidak valid.', 'err'); return; }
         token = t; setToken(t); akses = res;
         $('whoNama').textContent = res.nama || '-';
@@ -119,7 +119,7 @@
         startQr();
         loadStatus();
         loadDevices();
-      }).catch(function (e) { $('btnLogin').disabled = false; say($('loginStatus'), 'Gagal: ' + e.message, 'err'); });
+      }).catch(function (e) { busy($('btnLogin'), false); say($('loginStatus'), 'Gagal: ' + e.message, 'err'); });
     }
 
     $('btnLogin').addEventListener('click', function () { login($('token').value.trim()); });
@@ -224,22 +224,22 @@
       go.addEventListener('click', function () {
         const f = inp.files && inp.files[0];
         if (!f) { say($('adminStatus'), 'Belum ada file.', 'err'); return; }
-        go.disabled = true; cancel.disabled = true;
+        busy(go, true); cancel.disabled = true;
         say($('adminStatus'), 'Membaca ' + f.name + '...', 'info');
         const reader = new FileReader();
         reader.onload = function () {
           const b64 = String(reader.result).split(',')[1] || '';
           say($('adminStatus'), 'Memproses di server...', 'info');
           api(fnName, token, b64).then(function (res) {
-            go.disabled = false; cancel.disabled = false;
+            busy(go, false); cancel.disabled = false;
             say($('adminStatus'), (res && res.message) || 'Selesai.', (res && res.ok) ? 'ok' : 'err');
             if (res && res.ok) { reset(); loadStatus(); }
           }).catch(function (e) {
-            go.disabled = false; cancel.disabled = false;
+            busy(go, false); cancel.disabled = false;
             say($('adminStatus'), 'Gagal: ' + e.message, 'err');
           });
         };
-        reader.onerror = function () { go.disabled = false; cancel.disabled = false; say($('adminStatus'), 'Gagal membaca file.', 'err'); };
+        reader.onerror = function () { busy(go, false); cancel.disabled = false; say($('adminStatus'), 'Gagal membaca file.', 'err'); };
         reader.readAsDataURL(f);
       });
       return wrap;

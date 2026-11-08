@@ -53,7 +53,7 @@
 
   <script type="module">
     import { api } from './assets/js/api.js';
-    import { $, say } from './assets/js/common.js';
+    import { $, say, busy } from './assets/js/common.js';
 
     const state = { tiket: null, lokasi: null };
     const status = $('status');
@@ -127,17 +127,17 @@
     $('btnLokasi').addEventListener('click', function () {
       if (!navigator.geolocation) { say(status, 'Browser tidak mendukung GPS.', 'err'); return; }
       say(status, 'Mengambil lokasi presisi...', 'info');
-      $('btnLokasi').disabled = true;
+      busy($('btnLokasi'), true);
       navigator.geolocation.getCurrentPosition(function (pos) {
-        $('btnLokasi').disabled = false;
+        busy($('btnLokasi'), false);
         state.lokasi = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
         $('lokasi').textContent = 'Lat ' + state.lokasi.lat.toFixed(6) + ' \u00b7 Lng ' + state.lokasi.lng.toFixed(6) +
           ' \u00b7 Akurasi \u00b1' + Math.round(state.lokasi.accuracy) + 'm';
         $('lokasi').classList.remove('hidden');
-        $('btnCheckin').disabled = false;
+        busy($('btnCheckin'), false);
         say(status, 'Lokasi terkunci. Tekan Check-in TeFa.', 'ok');
       }, function (err) {
-        $('btnLokasi').disabled = false;
+        busy($('btnLokasi'), false);
         say(status, 'Gagal ambil lokasi: ' + err.message, 'err');
       }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
     });
@@ -153,17 +153,17 @@
         lat: state.lokasi.lat, lng: state.lokasi.lng, accuracy: state.lokasi.accuracy, reqId: reqId,
         device: deviceId()
       };
-      $('btnCheckin').disabled = true;
+      busy($('btnCheckin'), true);
       say(status, 'Mengirim check-in...', 'info');
       api('tefaCheckIn', payload).then(function (res) {
         if (res && res.ok) {
           say(status, res.message + (res.sesuaiRoster === 'N' ? ' (catatan: di luar roster sesi ini)' : ''), 'ok');
         } else {
-          $('btnCheckin').disabled = false;
+          busy($('btnCheckin'), false);
           say(status, (res && res.message) || 'Gagal check-in.', 'err');
         }
       }).catch(function (e) {
-        $('btnCheckin').disabled = false;
+        busy($('btnCheckin'), false);
         say(status, 'Gagal: ' + e.message, 'err');
       });
     });

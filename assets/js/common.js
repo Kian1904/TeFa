@@ -24,6 +24,13 @@ export function say(node, msg, jenis) {
   node.classList.remove('hidden');
 }
 
+// Tandai tombol sedang proses (teks → spinner) + kunci.
+export function busy(btn, on) {
+  if (!btn) return;
+  btn.classList.toggle('is-busy', !!on);
+  btn.disabled = !!on;
+}
+
 export function csv(row) {
   return row.map(function (v) {
     let s = String(v == null ? '' : v);
