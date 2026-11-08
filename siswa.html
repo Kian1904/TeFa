@@ -28,11 +28,18 @@
       <div class="kv"><span class="k">Unit</span><span class="v" id="vUnit">-</span></div>
       <div class="kv"><span class="k">Sesi</span><span class="v" id="vSesi">-</span></div>
 
-      <label for="nama">Nama kamu</label>
-      <input id="nama" placeholder="Tulis nama lengkap" autocomplete="off">
+      <div id="rosterBox" class="hidden">
+        <label>Pilih namamu</label>
+        <div id="rosterList" class="toolbar" style="margin-bottom:8px;"></div>
+        <button id="btnManual" class="btn btn-sm" type="button">Namaku tidak ada di daftar</button>
+      </div>
 
-      <label for="kelas">Kelas</label>
-      <select id="kelas"></select>
+      <div id="manualBox" class="hidden">
+        <label for="nama">Nama kamu</label>
+        <input id="nama" placeholder="Tulis nama lengkap" autocomplete="off">
+        <label for="kelas">Kelas</label>
+        <select id="kelas"></select>
+      </div>
 
       <label>Lokasi</label>
       <button id="btnLokasi" class="btn btn-block" type="button">Ambil lokasi presisi</button>
@@ -77,6 +84,31 @@
         (res.kelasList || []).forEach(function (k) {
           const o = document.createElement('option'); o.value = k; o.textContent = k; sel.appendChild(o);
         });
+
+        // Pilih dari roster sesi ini (kalau ada); kalau kosong → input manual.
+        const roster = res.roster || [];
+        const rbox = $('rosterList');
+        rbox.innerHTML = '';
+        if (roster.length) {
+          roster.forEach(function (it) {
+            const b = document.createElement('button');
+            b.type = 'button'; b.className = 'chip';
+            b.textContent = it.nama + (it.kelas ? ' \u00b7 ' + it.kelas : '');
+            b.addEventListener('click', function () {
+              Array.prototype.forEach.call(rbox.children, function (c) { c.classList.remove('active'); });
+              b.classList.add('active');
+              $('nama').value = it.nama;
+              $('kelas').value = it.kelas;
+            });
+            rbox.appendChild(b);
+          });
+          $('rosterBox').classList.remove('hidden');
+          $('manualBox').classList.add('hidden');
+        } else {
+          $('rosterBox').classList.add('hidden');
+          $('manualBox').classList.remove('hidden');
+        }
+
         $('formCard').classList.remove('hidden');
         $('scanCard').classList.add('hidden');
         say(status, 'Isi nama + kelas, ambil lokasi, lalu check-in.', 'ok');
@@ -85,6 +117,12 @@
 
     const params = new URLSearchParams(location.search);
     mulai(params.get('qr'));
+
+    $('btnManual').addEventListener('click', function () {
+      $('manualBox').classList.remove('hidden');
+      $('nama').value = ''; $('kelas').value = '';
+      Array.prototype.forEach.call($('rosterList').children, function (c) { c.classList.remove('active'); });
+    });
 
     $('btnLokasi').addEventListener('click', function () {
       if (!navigator.geolocation) { say(status, 'Browser tidak mendukung GPS.', 'err'); return; }

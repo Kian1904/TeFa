@@ -82,6 +82,13 @@
         <div id="adminStatus" class="status hidden"></div>
       </div>
 
+      <div class="card hidden" id="deviceCard">
+        <div class="eyebrow">Device</div>
+        <h2>HP terdaftar</h2>
+        <p class="hint">HP yang pernah check-in. Kalau siswa ganti HP, tekan Reset supaya HP barunya bisa dipakai check-in lagi. Baris "BARU" = HP ini baru dipakai nama itu.</p>
+        <div id="deviceList" class="summary">Memuat...</div>
+      </div>
+
       <p class="summary">Lihat &amp; unduh data check-in di halaman <a href="./rekap.html">Rekap</a>.</p>
     </div>
   </div>
@@ -106,10 +113,12 @@
         $('whoNama').textContent = res.nama || '-';
         $('whoUnit').textContent = (res.role === 'ADMIN') ? 'Admin (semua unit)' : (res.unit ? 'Unit: ' + res.unit : 'Pembimbing TEFA (semua unit)');
         if (res.role === 'ADMIN') $('adminCard').classList.remove('hidden');
+        if (res.role === 'ADMIN') $('deviceCard').classList.remove('hidden');
         if (res.role === 'ADMIN' || !res.unit) $('qrUnitRow').classList.remove('hidden');
         showDash();
         startQr();
         loadStatus();
+        loadDevices();
       }).catch(function (e) { $('btnLogin').disabled = false; say($('loginStatus'), 'Gagal: ' + e.message, 'err'); });
     }
 
@@ -159,6 +168,34 @@
         setStat('stJadwal', res.jadwal, 'penugasan');
         $('stUnit').textContent = (res.units || 0) + ' unit';
       }).catch(function (e) { $('stSiswa').textContent = 'gagal: ' + e.message; });
+    }
+
+    function loadDevices() {
+      if (!akses || akses.role !== 'ADMIN') return;
+      const box = $('deviceList');
+      box.textContent = 'Memuat...';
+      api('tefaDeviceList', token).then(function (res) {
+        box.textContent = '';
+        if (!res || !res.ok) { box.textContent = (res && res.message) || 'Gagal memuat.'; return; }
+        const rows = res.rows || [];
+        if (!rows.length) { box.textContent = 'Belum ada HP terdaftar.'; return; }
+        rows.forEach(function (r) {
+          const line = el('div', { class: 'kv' });
+          const lab = el('span', { class: 'k', text: (r.nama || r.id) + (r.kelas ? ' \u00b7 ' + r.kelas : '') + (r.flag === 'BARU' ? ' \u00b7 BARU' : '') });
+          const v = el('span', { class: 'v' });
+          const btn = el('button', { class: 'btn btn-sm', type: 'button', text: 'Reset' });
+          btn.addEventListener('click', function () {
+            if (!window.confirm('Reset device untuk ' + (r.nama || r.id) + '?')) return;
+            api('tefaDeviceReset', token, r.id).then(function (res2) {
+              say($('adminStatus'), (res2 && res2.message) || 'Selesai.', (res2 && res2.ok) ? 'ok' : 'err');
+              loadDevices();
+            }).catch(function (e) { say($('adminStatus'), 'Gagal: ' + e.message, 'err'); });
+          });
+          v.appendChild(btn);
+          line.appendChild(lab); line.appendChild(v);
+          box.appendChild(line);
+        });
+      }).catch(function (e) { box.textContent = 'Gagal: ' + e.message; });
     }
 
     // Builder baris upload: pilih file -> Proses / Batal.
