@@ -113,7 +113,7 @@
         $('whoNama').textContent = res.nama || '-';
         $('whoUnit').textContent = (res.role === 'ADMIN') ? 'Admin (semua unit)' : (res.unit ? 'Unit: ' + res.unit : 'Pembimbing TEFA (semua unit)');
         if (res.role === 'ADMIN') $('adminCard').classList.remove('hidden');
-        if (res.role === 'ADMIN') $('deviceCard').classList.remove('hidden');
+        $('deviceCard').classList.remove('hidden');
         if (res.role === 'ADMIN' || !res.unit) $('qrUnitRow').classList.remove('hidden');
         showDash();
         startQr();
@@ -171,7 +171,7 @@
     }
 
     function loadDevices() {
-      if (!akses || akses.role !== 'ADMIN') return;
+      if (!akses) return;
       const box = $('deviceList');
       box.textContent = 'Memuat...';
       api('tefaDeviceList', token).then(function (res) {
