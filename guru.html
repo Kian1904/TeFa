@@ -50,7 +50,7 @@
           </div>
         </div>
         <div class="qrbox">
-          <img id="qrImg" alt="Barcode absen">
+          <img id="qrImg" class="hidden" alt="Barcode absen">
           <div id="qrInfo" class="summary" style="margin-top:8px;">Memuat barcode...</div>
           <div id="qrCount" class="summary"></div>
           <div id="qrUrl" class="qr-url"></div>
@@ -136,10 +136,10 @@
       api('tefaBuatQr', token, unit, location.origin + '/siswa.html').then(function (res) {
         if (!res || !res.ok) {
           $('qrInfo').textContent = (res && res.message) || 'Barcode tidak tersedia.';
-          $('qrImg').removeAttribute('src'); $('qrCount').textContent = ''; $('qrUrl').textContent = '';
+          $('qrImg').removeAttribute('src'); $('qrImg').classList.add('hidden'); $('qrCount').textContent = ''; $('qrUrl').textContent = '';
           return;
         }
-        $('qrImg').src = res.img;
+        $('qrImg').src = res.img; $('qrImg').classList.remove('hidden');
         $('qrInfo').textContent = res.unitNama + ' \u00b7 Sesi ' + res.sesi + ' (jam ' + res.jamKe + ')';
         $('qrCount').textContent = 'Diperbarui otomatis tiap 15 dtk (token aktif ~' + res.ttl + ' dtk).';
         $('qrUrl').textContent = res.url;
