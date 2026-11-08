@@ -21,7 +21,13 @@
     <div class="card white" id="scanCard">
       <div class="eyebrow">Halaman siswa</div>
       <h2>Scan barcode guru PJ</h2>
-      <p class="hint">Arahkan kamera HP ke barcode yang ditampilkan guru PJ kamu. Halaman ini terbuka otomatis setelah scan.</p>
+      <p class="hint">Kamera HP kamu gak bisa baca barcode? Scan langsung di sini — arahkan kamera ke barcode di layar guru PJ.</p>
+      <button id="btnScan" class="btn btn-primary btn-block" type="button">Scan barcode di halaman ini</button>
+      <div id="scanView" class="hidden" style="margin-top:12px;">
+        <video id="scanVideo" playsinline muted autoplay style="width:100%;aspect-ratio:1/1;object-fit:cover;background:#000;border:2px solid var(--ink);border-radius:12px;"></video>
+        <button id="btnScanStop" class="btn btn-sm" type="button" style="margin-top:8px;">Stop scan</button>
+      </div>
+      <p class="summary" style="margin-top:10px;">Atau kalau barcode-nya kebaca sama aplikasi kamera bawaan HP, cukup arahkan ke situ — otomatis masuk ke halaman ini.</p>
     </div>
 
     <div class="card white hidden" id="formCard">
@@ -69,7 +75,58 @@
       return d;
     }
 
+    // ---- Scanner barcode in-app (Chrome/Android: BarcodeDetector) ----
+    let scanStream = null, scanTimer = null;
+    function stopScan() {
+      if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+      if (scanStream) { scanStream.getTracks().forEach(function (t) { t.stop(); }); scanStream = null; }
+      $('scanView').classList.add('hidden');
+      $('btnScan').classList.remove('hidden');
+    }
+    function handleScan(text) {
+      let code = '';
+      try { code = new URL(text).searchParams.get('qr') || ''; } catch (e) {}
+      if (!code) {
+        const t = String(text || '').trim();
+        if (/^[A-Za-z0-9]{4,}$/.test(t)) code = t;
+      }
+      if (!code) { say(status, 'Barcode kebaca, tapi itu bukan barcode guru PJ.', 'err'); return; }
+      mulai(code);
+    }
+    function startScan() {
+      if (!('BarcodeDetector' in window)) {
+        say(status, 'Browser ini belum bisa scan di dalam web. Pakai kamera bawaan aja: arahkan ke barcode guru PJ.', 'info');
+        return;
+      }
+      say(status, 'Membuka kamera...', 'info');
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+        .then(function (stream) {
+          scanStream = stream;
+          const v = $('scanVideo');
+          v.srcObject = stream;
+          const p = v.play(); if (p && p.catch) p.catch(function () {});
+          $('scanView').classList.remove('hidden');
+          $('btnScan').classList.add('hidden');
+          say(status, 'Arahkan kamera ke barcode di layar guru PJ...', 'info');
+          const detector = new BarcodeDetector({ formats: ['qr_code'] });
+          scanTimer = setInterval(function () {
+            detector.detect(v).then(function (codes) {
+              if (codes && codes.length) { stopScan(); handleScan(codes[0].rawValue); }
+            }).catch(function () {});
+          }, 300);
+        })
+        .catch(function (e) {
+          say(status, 'Gagal buka kamera: ' + (e && e.message ? e.message : e) + '. Pakai kamera bawaan ya.', 'err');
+        });
+    }
+    function siapScan() {
+      $('btnScan').addEventListener('click', startScan);
+      $('btnScanStop').addEventListener('click', function () { stopScan(); say(status, 'Scan dihentikan.', 'info'); });
+      document.addEventListener('visibilitychange', function () { if (document.hidden) stopScan(); });
+    }
+
     function mulai(kode) {
+      stopScan();
       if (!kode) { say(status, 'Belum ada barcode terbaca. Scan barcode dari layar guru PJ.', 'info'); return; }
       say(status, 'Memeriksa barcode...', 'info');
       api('tefaTukarTiket', kode).then(function (res) {
@@ -116,7 +173,8 @@
     }
 
     const params = new URLSearchParams(location.search);
-    mulai(params.get('qr'));
+    const kodeAwal = params.get('qr');
+    if (kodeAwal) mulai(kodeAwal); else siapScan();
 
     $('btnManual').addEventListener('click', function () {
       $('manualBox').classList.remove('hidden');
