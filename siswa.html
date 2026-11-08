@@ -51,6 +51,17 @@
     const state = { tiket: null, lokasi: null };
     const status = $('status');
 
+    // ID device stabil di HP ini (localStorage) buat aturan "1 HP = 1 check-in".
+    function deviceId() {
+      let d = '';
+      try { d = localStorage.getItem('tefa_device') || ''; } catch (e) {}
+      if (!d) {
+        d = 'd-' + ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(36).slice(2)));
+        try { localStorage.setItem('tefa_device', d); } catch (e) {}
+      }
+      return d;
+    }
+
     function mulai(kode) {
       if (!kode) { say(status, 'Belum ada barcode terbaca. Scan barcode dari layar guru PJ.', 'info'); return; }
       say(status, 'Memeriksa barcode...', 'info');
@@ -101,7 +112,8 @@
       const reqId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : ('req-' + Date.now());
       const payload = {
         tiket: state.tiket, nama: $('nama').value.trim(), kelas: $('kelas').value,
-        lat: state.lokasi.lat, lng: state.lokasi.lng, accuracy: state.lokasi.accuracy, reqId: reqId
+        lat: state.lokasi.lat, lng: state.lokasi.lng, accuracy: state.lokasi.accuracy, reqId: reqId,
+        device: deviceId()
       };
       $('btnCheckin').disabled = true;
       say(status, 'Mengirim check-in...', 'info');
