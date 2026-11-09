@@ -17,12 +17,20 @@ export default async function handler(req, res) {
   if (typeof body !== 'string') body = JSON.stringify(body || {});
 
   try {
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body,
-      redirect: 'follow'
-    });
+    const ctrl = new AbortController();
+    const timer = setTimeout(function () { ctrl.abort(); }, 40000);
+    let r;
+    try {
+      r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body,
+        redirect: 'follow',
+        signal: ctrl.signal
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     const text = await r.text();
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
