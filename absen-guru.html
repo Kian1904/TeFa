@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Absensi TeFa — Absen Guru</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/css/app.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="logo">T</span><span class="brandtxt">Absensi TeFa<small>Absen Piket Guru</small></span></div>
+      <nav class="topnav">
+        <a href="./index.html">Beranda</a>
+        <a href="./guru.html">Guru PJ</a>
+        <a href="./absen-guru.html" class="active">Absen Guru</a>
+        <a href="./rekap.html">Rekap</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="container narrow">
+    <div class="card white">
+      <div class="eyebrow">Absen Piket Guru</div>
+      <h2 id="tanggal">Memuat…</h2>
+      <p class="hint">Pilih namamu buat absen piket hari ini. Cuma bisa sekali sehari — habis dipilih, tombolnya mati.</p>
+      <div id="guruList" class="gurulist">
+        <span class="summary">Memuat…</span>
+      </div>
+    </div>
+
+    <div id="status" class="status hidden"></div>
+  </div>
+
+  <script type="module">
+    import { api } from './assets/js/api.js';
+    import { $, say } from './assets/js/common.js';
+
+    const status = $('status');
+
+    function render(tgl, list) {
+      $('tanggal').textContent = 'Piket hari ini · ' + tgl;
+      const box = $('guruList');
+      box.innerHTML = '';
+      if (!list.length) {
+        const s = document.createElement('span');
+        s.className = 'summary';
+        s.textContent = 'Belum ada jadwal piket guru untuk hari ini.';
+        box.appendChild(s);
+        return;
+      }
+      list.forEach(function (it) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn btn-block' + (it.absen ? ' btn-absen-done' : '');
+        b.textContent = it.absen ? (it.nama + ' — sudah absen') : it.nama;
+        if (it.absen) {
+          b.disabled = true;
+        } else {
+          b.addEventListener('click', function () { absen(it.nama, b); });
+        }
+        box.appendChild(b);
+      });
+    }
+
+    function load() {
+      api('tefaGuruHariIni').then(function (res) {
+        if (!res || !res.ok) { say(status, (res && res.message) || 'Gagal memuat jadwal.', 'err'); return; }
+        render(res.tanggal, res.list || []);
+      }).catch(function (e) { say(status, 'Gagal: ' + e.message, 'err'); });
+    }
+
+    function absen(nama, btn) {
+      btn.disabled = true;
+      say(status, 'Mengirim absen…', 'info');
+      api('tefaGuruAbsen', nama).then(function (res) {
+        if (res && res.ok) { say(status, res.message, 'ok'); load(); }
+        else { btn.disabled = false; say(status, (res && res.message) || 'Gagal absen.', 'err'); }
+      }).catch(function (e) { btn.disabled = false; say(status, 'Gagal: ' + e.message, 'err'); });
+    }
+
+    load();
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+  </script>
+</body>
+</html>

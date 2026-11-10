@@ -209,6 +209,12 @@ table.rekap tbody tr:hover { background: #FBF4E8; }
 
 /* Landing */
 .cards3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+
+/* Absen guru */
+.gurulist { display: flex; flex-direction: column; gap: 10px; }
+.btn-absen-done { background: var(--danger); border-color: var(--ink); color: #fff; box-shadow: none; opacity: 1; }
+.btn-absen-done:active { transform: none; filter: none; }
+
 .cardlink { display: block; transition: transform .14s var(--ease), box-shadow .14s var(--ease); }
 .cardlink:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 rgba(36, 29, 22, .18); }
 .cardlink:active { transform: translate(2px, 2px) scale(.98); box-shadow: 2px 2px 0 rgba(36, 29, 22, .18); transition-duration: .07s; }
