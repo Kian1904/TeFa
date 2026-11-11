@@ -263,3 +263,27 @@ table.rekap tbody tr:hover { background: #FBF4E8; }
   animation: checkPop .5s cubic-bezier(.34, 1.56, .64, 1) .08s both;
 }
 .ok-card h2 { margin-bottom: 6px; }
+
+/* Skeleton loading (kerangka shimmer pas data belum turun) */
+.skeleton {
+  position: relative; overflow: hidden; display: inline-block;
+  background: var(--panel-2); border-radius: 6px; vertical-align: middle;
+}
+.skeleton::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .75), transparent);
+  transform: translateX(-100%); animation: shimmer 1.25s infinite;
+}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* Timer rotasi QR di dashboard guru */
+.timerbar {
+  height: 9px; margin: 12px auto 0; max-width: 260px;
+  border: 1.5px solid var(--ink); border-radius: 999px;
+  background: var(--panel-2); overflow: hidden;
+}
+.timerbar > span {
+  display: block; height: 100%; width: 100%; background: var(--accent);
+  transform-origin: left center; transform: scaleX(1); transition: transform .95s linear;
+}
+.qr-timer-text { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 7px; letter-spacing: .04em; }

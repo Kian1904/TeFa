@@ -53,6 +53,26 @@ export function haptic(pattern) {
   try { if (navigator.vibrate) navigator.vibrate(pattern == null ? 10 : pattern); } catch (e) {}
 }
 
+// Placeholder skeleton (HTML string) buat keadaan "sedang memuat".
+export function skl(w, h) {
+  return '<span class="skeleton" style="display:inline-block;width:' + (w || 70) + 'px;height:' + (h || 13) + 'px;"></span>';
+}
+
+// Isi <tbody> dengan baris skeleton (kerangka tabel) selagi data dimuat.
+export function skeletonRows(tbody, cols, rows) {
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  for (let r = 0; r < (rows || 5); r++) {
+    const tr = document.createElement('tr');
+    for (let c = 0; c < cols; c++) {
+      const td = document.createElement('td');
+      td.innerHTML = skl(56 + ((r * 7 + c * 13) % 64), 12);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+}
+
 // Feed balik "fisik" buat tombol & chip: efek ripple dari titik sentuh + getar.
 export function initTouchFeedback() {
   document.addEventListener('pointerdown', function (ev) {

@@ -91,7 +91,7 @@
 
   <script type="module">
     import { api } from './assets/js/api.js';
-    import { $, getToken, setToken, clearToken, say, el, csv, downloadText } from './assets/js/common.js';
+    import { $, getToken, setToken, clearToken, say, el, csv, downloadText, skl, skeletonRows } from './assets/js/common.js';
 
     let token = getToken();
     let akses = null;
@@ -124,9 +124,10 @@
     $('logout').addEventListener('click', function(e){ e.preventDefault(); clearToken(); token=''; akses=null; showLogin(); });
 
     function load(){
-      $('summary').textContent = 'Memuat...';
+      $('summary').innerHTML = skl(190);
+      const tbody = $('tbody'); skeletonRows(tbody, 11, 6);
       api('tefaDashboard', token, opts()).then(function(res){
-        const tbody = $('tbody'); tbody.textContent = '';
+        tbody.textContent = '';
         if (!res || !res.ok) { $('summary').textContent = (res && res.message) || 'Gagal memuat.'; return; }
         const rows = res.rows || [];
         $('summary').textContent = rows.length + ' check-in \u00b7 ' + $('fMulai').value + ' s/d ' + $('fSelesai').value + (res.role === 'ADMIN' ? '' : ' \u00b7 unit ' + res.unit);

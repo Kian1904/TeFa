@@ -52,8 +52,10 @@
         </div>
         <div class="qrbox">
           <img id="qrImg" class="hidden" alt="Barcode absen">
-          <div id="qrInfo" class="summary" style="margin-top:8px;">Memuat barcode...</div>
+          <div id="qrInfo" class="summary" style="margin-top:8px;"><span class="skeleton" style="display:inline-block;width:170px;height:13px;"></span></div>
           <div id="qrCount" class="summary"></div>
+          <div id="qrTimerBar" class="timerbar"><span></span></div>
+          <div id="qrTimerText" class="qr-timer-text"></div>
           <div id="qrUrl" class="qr-url"></div>
         </div>
       </div>
@@ -96,11 +98,12 @@
 
   <script type="module">
     import { api } from './assets/js/api.js';
-    import { $, getToken, setToken, clearToken, say, el, busy } from './assets/js/common.js';
+    import { $, getToken, setToken, clearToken, say, el, busy, skl } from './assets/js/common.js';
 
     let token = getToken();
     let akses = null;
     let qrTimer = null;
+    let qrCountdown = null;
 
     function showLogin() { $('loginCard').classList.remove('hidden'); $('dashView').classList.add('hidden'); $('logout').classList.add('hidden'); }
     function showDash() { $('loginCard').classList.add('hidden'); $('dashView').classList.remove('hidden'); $('logout').classList.remove('hidden'); }
@@ -125,12 +128,32 @@
 
     $('btnLogin').addEventListener('click', function () { login($('token').value.trim()); });
     $('token').addEventListener('keydown', function (e) { if (e.key === 'Enter') login($('token').value.trim()); });
-    $('logout').addEventListener('click', function (e) { e.preventDefault(); clearToken(); token = ''; akses = null; if (qrTimer) clearInterval(qrTimer); showLogin(); });
+    $('logout').addEventListener('click', function (e) { e.preventDefault(); clearToken(); token = ''; akses = null; if (qrTimer) clearInterval(qrTimer); stopQrCountdown(); showLogin(); });
 
     function startQr() {
       if (qrTimer) clearInterval(qrTimer);
       refreshQr();
       qrTimer = setInterval(refreshQr, 15000);
+    }
+    // Timer ring/bilah: hitung mundur waktu sampai QR dirotasi (biar guru PJ tahu kapan refresh).
+    function startQrCountdown(sec) {
+      if (qrCountdown) clearInterval(qrCountdown);
+      let remain = sec;
+      const bar = $('qrTimerBar').firstElementChild;
+      const txt = $('qrTimerText');
+      function tick() {
+        if (bar) bar.style.transform = 'scaleX(' + Math.max(0, remain / sec) + ')';
+        if (txt) txt.textContent = 'QR baru dalam ' + Math.max(0, remain) + ' dtk';
+        remain -= 1;
+      }
+      tick();
+      qrCountdown = setInterval(tick, 1000);
+    }
+    function stopQrCountdown() {
+      if (qrCountdown) { clearInterval(qrCountdown); qrCountdown = null; }
+      const bar = $('qrTimerBar') && $('qrTimerBar').firstElementChild;
+      if (bar) bar.style.transform = 'scaleX(0)';
+      if ($('qrTimerText')) $('qrTimerText').textContent = '';
     }
     function refreshQr() {
       const unit = (akses && akses.role === 'ADMIN') ? $('qrUnit').value : ($('qrUnitRow').classList.contains('hidden') ? '' : $('qrUnit').value);
@@ -138,13 +161,15 @@
         if (!res || !res.ok) {
           $('qrInfo').textContent = (res && res.message) || 'Barcode tidak tersedia.';
           $('qrImg').removeAttribute('src'); $('qrImg').classList.add('hidden'); $('qrCount').textContent = ''; $('qrUrl').textContent = '';
+          stopQrCountdown();
           return;
         }
         $('qrImg').src = res.img; $('qrImg').classList.remove('hidden');
         $('qrInfo').textContent = res.unitNama + ' \u00b7 Sesi ' + res.sesi + ' (jam ' + res.jamKe + ')';
         $('qrCount').textContent = 'Diperbarui otomatis tiap 15 dtk (token aktif ~' + res.ttl + ' dtk).';
         $('qrUrl').textContent = res.url;
-      }).catch(function (e) { $('qrInfo').textContent = 'Gagal: ' + e.message; });
+        startQrCountdown(15);
+      }).catch(function (e) { $('qrInfo').textContent = 'Gagal: ' + e.message; stopQrCountdown(); });
     }
     $('qrUnit').addEventListener('change', startQr);
 
@@ -161,7 +186,9 @@
       $(id).textContent = n + ' ' + satuan + t;
     }
     function loadStatus() {
-      $('stSiswa').textContent = 'memuat...';
+      $('stSiswa').innerHTML = skl(64);
+      $('stGuru').innerHTML = skl(52);
+      $('stJadwal').innerHTML = skl(72);
       api('tefaStatusData', token).then(function (res) {
         if (!res || !res.ok) { $('stSiswa').textContent = (res && res.message) || 'gagal memuat'; return; }
         setStat('stSiswa', res.siswa, 'siswa');
@@ -174,7 +201,7 @@
     function loadDevices() {
       if (!akses) return;
       const box = $('deviceList');
-      box.textContent = 'Memuat...';
+      box.innerHTML = skl(220) + '<br>' + skl(180) + '<br>' + skl(200);
       api('tefaDeviceList', token).then(function (res) {
         box.textContent = '';
         if (!res || !res.ok) { box.textContent = (res && res.message) || 'Gagal memuat.'; return; }

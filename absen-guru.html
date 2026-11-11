@@ -25,10 +25,10 @@
   <div class="container narrow">
     <div class="card white">
       <div class="eyebrow">Absen Piket Guru</div>
-      <h2 id="tanggal">Memuat…</h2>
+      <h2 id="tanggal"><span class="skeleton" style="display:inline-block;width:210px;height:20px;"></span></h2>
       <p class="hint">Pilih namamu buat absen piket hari ini. Cuma bisa sekali sehari — habis dipilih, tombolnya mati.</p>
       <div id="guruList" class="gurulist">
-        <span class="summary">Memuat…</span>
+        <span class="skeleton" style="display:block;width:100%;height:44px;"></span>
       </div>
     </div>
 
@@ -67,6 +67,7 @@
     }
 
     function load() {
+      $('guruList').innerHTML = '<span class="skeleton" style="display:block;width:100%;height:44px;"></span>';
       api('tefaGuruHariIni').then(function (res) {
         if (!res || !res.ok) { say(status, (res && res.message) || 'Gagal memuat jadwal.', 'err'); return; }
         render(res.tanggal, res.list || []);
