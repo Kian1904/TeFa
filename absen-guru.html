@@ -37,7 +37,7 @@
 
   <script type="module">
     import { api } from './assets/js/api.js';
-    import { $, say } from './assets/js/common.js';
+    import { $, say, haptic } from './assets/js/common.js';
 
     const status = $('status');
 
@@ -77,7 +77,7 @@
       btn.disabled = true;
       say(status, 'Mengirim absen…', 'info');
       api('tefaGuruAbsen', nama).then(function (res) {
-        if (res && res.ok) { say(status, res.message, 'ok'); load(); }
+        if (res && res.ok) { say(status, res.message, 'ok'); haptic([18, 55, 18]); load(); }
         else { btn.disabled = false; say(status, (res && res.message) || 'Gagal absen.', 'err'); }
       }).catch(function (e) { btn.disabled = false; say(status, 'Gagal: ' + e.message, 'err'); });
     }

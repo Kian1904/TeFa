@@ -47,3 +47,32 @@ export function downloadText(filename, text) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
 }
+
+// Getar HP (haptics) — no-op kalau browser gak dukung / di desktop.
+export function haptic(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern == null ? 10 : pattern); } catch (e) {}
+}
+
+// Feed balik "fisik" buat tombol & chip: efek ripple dari titik sentuh + getar.
+export function initTouchFeedback() {
+  document.addEventListener('pointerdown', function (ev) {
+    const t = ev.target;
+    const el = t && t.closest ? t.closest('.btn, .chip') : null;
+    if (!el || el.disabled) return;
+    const r = el.getBoundingClientRect();
+    const size = Math.max(r.width, r.height) * 2;
+    const span = document.createElement('span');
+    span.className = 'ripple';
+    span.style.width = span.style.height = size + 'px';
+    span.style.left = (ev.clientX - r.left - size / 2) + 'px';
+    span.style.top = (ev.clientY - r.top - size / 2) + 'px';
+    el.appendChild(span);
+    setTimeout(function () { if (span.parentNode) span.parentNode.removeChild(span); }, 620);
+    haptic(9);
+  }, { passive: true });
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initTouchFeedback);
+  else initTouchFeedback();
+}
