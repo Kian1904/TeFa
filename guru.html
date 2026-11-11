@@ -226,25 +226,33 @@
       }).catch(function (e) { box.textContent = 'Gagal: ' + e.message; });
     }
 
-    // Builder baris upload: pilih file -> Proses / Batal.
+    // Builder baris upload: tombol "Pilih file" custom -> Proses / Batal.
     function uploadRow(label, accept, fnName) {
-      const wrap = el('div', { style: 'margin-top:12px' });
-      wrap.appendChild(el('label', { text: label, for: 'f-' + fnName }));
-      const inp = el('input', { type: 'file', accept: accept, id: 'f-' + fnName });
+      const wrap = el('div', { style: 'margin-top:14px' });
+      wrap.appendChild(el('div', { class: 'uplabel', text: label }));
+
+      const inp = el('input', { type: 'file', accept: accept, id: 'f-' + fnName, class: 'file-native' });
+
+      const bar = el('div', { class: 'uplrow' });
+      const pick = el('label', { class: 'btn btn-sm btn-upload', for: 'f-' + fnName, text: 'Pilih file' });
+      const nm0 = el('span', { class: 'upname', text: 'Belum ada file dipilih' });
+      bar.appendChild(pick); bar.appendChild(nm0);
+      wrap.appendChild(bar);
       wrap.appendChild(inp);
 
-      const actions = el('div', { class: 'row', style: 'display:none;margin-top:6px;align-items:center;' });
+      const actions = el('div', { class: 'row', style: 'display:none;margin-top:8px;align-items:center;' });
       const nm = el('span', { class: 'summary', style: 'flex:1;word-break:break-all;' });
       const go = el('button', { class: 'btn btn-sm btn-primary', type: 'button', text: 'Proses' });
       const cancel = el('button', { class: 'btn btn-sm', type: 'button', text: 'Batal' });
       actions.appendChild(nm); actions.appendChild(go); actions.appendChild(cancel);
       wrap.appendChild(actions);
 
-      function reset() { inp.value = ''; actions.style.display = 'none'; nm.textContent = ''; }
+      function reset() { inp.value = ''; actions.style.display = 'none'; nm.textContent = ''; nm0.textContent = 'Belum ada file dipilih'; }
       inp.addEventListener('change', function () {
         const f = inp.files && inp.files[0];
         if (!f) { reset(); return; }
         nm.textContent = f.name;
+        nm0.textContent = f.name;
         actions.style.display = 'flex';
         say($('adminStatus'), 'File dipilih: ' + f.name + '. Tekan Proses untuk memuat.', 'info');
       });
@@ -277,6 +285,7 @@
     uploads.appendChild(uploadRow('Muat jadwal piket TeFa (.xlsx)', '.xlsx', 'tefaLoadJadwal'));
     uploads.appendChild(uploadRow('Muat data siswa (.xlsx)', '.xlsx', 'tefaLoadSiswa'));
     uploads.appendChild(uploadRow('Muat jadwal pembimbing/guru PJ (.xlsx/.xlsm)', '.xlsx,.xlsm', 'tefaLoadPembimbing'));
+    uploads.appendChild(uploadRow('Muat jadwal piket guru untuk absen guru (.xlsx/.xlsm)', '.xlsx,.xlsm', 'tefaGuruLoadJadwal'));
 
     function adminCall(fn) {
       say($('adminStatus'), 'Memproses...', 'info');
