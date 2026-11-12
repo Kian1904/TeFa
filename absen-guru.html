@@ -18,12 +18,25 @@
         <a href="./guru.html">Guru PJ</a>
         <a href="./absen-guru.html" class="active">Absen Guru</a>
         <a href="./rekap.html">Rekap</a>
+        <a href="#" id="logout" class="hidden">Keluar</a>
       </nav>
     </div>
   </div>
 
   <div class="container narrow">
-    <div class="card white">
+    <div class="card white" id="loginCard">
+      <div class="eyebrow">Masuk</div>
+      <h2>Token akses guru</h2>
+      <p class="hint">Halaman ini khusus guru piket. Masukkan token akses yang dikasih admin — cukup sekali per HP, nanti diingat.</p>
+      <label for="token">Token</label>
+      <div class="row">
+        <input id="token" type="password" placeholder="Masukkan token" autocomplete="off">
+        <button id="btnLogin" class="btn btn-primary" type="button">Masuk</button>
+      </div>
+      <div id="loginStatus" class="status hidden"></div>
+    </div>
+
+    <div class="card white hidden" id="absenCard">
       <div class="eyebrow">Absen Piket Guru</div>
       <h2 id="tanggal"><span class="skeleton" style="display:inline-block;width:210px;height:20px;"></span></h2>
       <p class="hint">Pilih namamu buat absen piket hari ini. Cuma bisa sekali sehari — habis dipilih, tombolnya mati.</p>
@@ -37,9 +50,13 @@
 
   <script type="module">
     import { api } from './assets/js/api.js';
-    import { $, say, haptic } from './assets/js/common.js';
+    import { $, say, haptic, getToken, setToken, clearToken } from './assets/js/common.js';
 
     const status = $('status');
+    let token = getToken();
+
+    function showLogin() { $('loginCard').classList.remove('hidden'); $('absenCard').classList.add('hidden'); $('logout').classList.add('hidden'); }
+    function showAbsen() { $('loginCard').classList.add('hidden'); $('absenCard').classList.remove('hidden'); $('logout').classList.remove('hidden'); }
 
     function render(tgl, list) {
       $('tanggal').textContent = 'Piket hari ini · ' + tgl;
@@ -68,23 +85,45 @@
 
     function load() {
       $('guruList').innerHTML = '<span class="skeleton" style="display:block;width:100%;height:44px;"></span>';
-      api('tefaGuruHariIni').then(function (res) {
-        if (!res || !res.ok) { say(status, (res && res.message) || 'Gagal memuat jadwal.', 'err'); return; }
+      api('tefaGuruHariIni', token).then(function (res) {
+        if (!res || !res.ok) {
+          if (res && /login habis|login ulang/i.test(res.message || '')) { clearToken(); token = ''; showLogin(); return; }
+          say(status, (res && res.message) || 'Gagal memuat jadwal.', 'err');
+          return;
+        }
+        showAbsen();
         render(res.tanggal, res.list || []);
       }).catch(function (e) { say(status, 'Gagal: ' + e.message, 'err'); });
+    }
+
+    function login(t) {
+      t = String(t || '').trim();
+      if (!t) { say($('loginStatus'), 'Token belum diisi.', 'err'); return; }
+      $('btnLogin').disabled = true;
+      api('tefaGuruHariIni', t).then(function (res) {
+        $('btnLogin').disabled = false;
+        if (!res || !res.ok) { say($('loginStatus'), (res && res.message) || 'Token tidak valid.', 'err'); return; }
+        token = t; setToken(t);
+        showAbsen();
+        render(res.tanggal, res.list || []);
+      }).catch(function (e) { $('btnLogin').disabled = false; say($('loginStatus'), 'Gagal: ' + e.message, 'err'); });
     }
 
     function absen(nama, btn) {
       btn.disabled = true;
       say(status, 'Mengirim absen…', 'info');
-      api('tefaGuruAbsen', nama).then(function (res) {
+      api('tefaGuruAbsen', token, nama).then(function (res) {
         if (res && res.ok) { say(status, res.message, 'ok'); haptic([18, 55, 18]); load(); }
         else { btn.disabled = false; say(status, (res && res.message) || 'Gagal absen.', 'err'); }
       }).catch(function (e) { btn.disabled = false; say(status, 'Gagal: ' + e.message, 'err'); });
     }
 
-    load();
-    document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+    $('btnLogin').addEventListener('click', function () { login($('token').value); });
+    $('token').addEventListener('keydown', function (e) { if (e.key === 'Enter') login($('token').value); });
+    $('logout').addEventListener('click', function (e) { e.preventDefault(); clearToken(); token = ''; showLogin(); });
+
+    if (token) load(); else showLogin();
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && token) load(); });
   </script>
 </body>
 </html>
